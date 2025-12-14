@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiseDigitalTwins - 智能倉儲數字孿生平台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+</head>
+<body>
+    <!-- Main Header -->
+    <header id="main-header">
+        <div class="header-left">
+            <h1 class="logo">WiseDigitalTwins</h1>
+        </div>
+        <nav class="header-right">
+            <a href="#" class="nav-link active" data-page="home">首頁</a>
+            <a href="#" class="nav-link" data-page="editor">編輯頁面</a>
+        </nav>
+    </header>
+
+    <!-- Home Page -->
+    <div id="home-page" class="page active">
+        <div class="home-container">
+            <h2>倉儲布局管理</h2>
+            <div class="home-actions">
+                <button id="btn-new-layout" class="btn btn-primary">
+                    <span class="icon">+</span> 新增布局
+                </button>
+            </div>
+            <div id="layout-list" class="layout-grid">
+                <!-- Layout cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- New Layout Modal -->
+        <div id="new-layout-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>新增倉儲布局</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>布局名稱</label>
+                        <input type="text" id="layout-name" placeholder="請輸入布局名稱" value="新布局">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>場地長度 (m)</label>
+                            <input type="number" id="layout-width" value="60" min="10" max="500">
+                        </div>
+                        <div class="form-group">
+                            <label>場地寬度 (m)</label>
+                            <input type="number" id="layout-depth" value="60" min="10" max="500">
+                        </div>
+                        <div class="form-group">
+                            <label>天花板高度 (m)</label>
+                            <input type="number" id="layout-height" value="5" min="2" max="20">
+                        </div>
+                    </div>
+                    <p class="form-hint">地板將以 60cm × 60cm 的格子排列</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary modal-cancel">取消</button>
+                    <button class="btn btn-primary" id="btn-create-layout">建立</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editor Page -->
+    <div id="editor-page" class="page">
+        <!-- Editor Header -->
+        <div id="editor-header">
+            <div class="editor-header-left">
+                <div class="mode-toggle">
+                    <button class="mode-btn active" data-mode="edit">編輯模式</button>
+                    <button class="mode-btn" data-mode="simulate">模擬監控</button>
+                </div>
+                <div class="view-controls">
+                    <span class="control-label">視角:</span>
+                    <button class="view-btn" data-view="perspective" title="透視圖">3D</button>
+                    <button class="view-btn" data-view="top" title="俯視圖">上</button>
+                    <button class="view-btn" data-view="front" title="正視圖">前</button>
+                    <button class="view-btn" data-view="side" title="側視圖">側</button>
+                </div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoom-in" title="放大">+</button>
+                    <span id="zoom-level">100%</span>
+                    <button class="zoom-btn" id="zoom-out" title="縮小">-</button>
+                    <button class="zoom-btn" id="zoom-fit" title="適合視窗">適合</button>
+                </div>
+            </div>
+            <div class="editor-header-center">
+                <div class="history-controls">
+                    <button class="history-btn" id="btn-undo" title="復原 (Ctrl+Z)" disabled>
+                        <span>↶</span> 復原
+                    </button>
+                    <button class="history-btn" id="btn-redo" title="重做 (Ctrl+Y)" disabled>
+                        <span>↷</span> 重做
+                    </button>
+                </div>
+                <div class="layer-controls">
+                    <label>顯示圖層:</label>
+                    <div class="layer-dropdown">
+                        <button class="layer-dropdown-btn">全部圖層 ▼</button>
+                        <div class="layer-dropdown-content">
+                            <label><input type="checkbox" data-layer="shelf" checked> 貨架</label>
+                            <label><input type="checkbox" data-layer="pallet" checked> 棧板區</label>
+                            <label><input type="checkbox" data-layer="shipping" checked> 人工出貨區</label>
+                            <label><input type="checkbox" data-layer="equipment" checked> 設備</label>
+                            <label><input type="checkbox" data-layer="restricted" checked> 禁止移動區</label>
+                            <label><input type="checkbox" data-layer="agvPath" checked> AGV路線</label>
+                            <label><input type="checkbox" data-layer="agv" checked> AGV</label>
+                            <label><input type="checkbox" data-layer="agvStation" checked> AGV出貨站</label>
+                        </div>
+                    </div>
+                    <div class="layer-display-mode" style="display:none;">
+                        <label>隱藏方式:</label>
+                        <select id="hidden-layer-mode">
+                            <option value="transparent">半透明</option>
+                            <option value="wireframe">只顯示框線</option>
+                            <option value="hidden">完全隱藏</option>
+                            <option value="normal">正常顯示</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="editor-header-right">
+                <!-- Simulation Controls (shown in simulate mode) -->
+                <div class="simulation-controls" style="display:none;">
+                    <div class="time-display">
+                        <span id="sim-time">00:00:00</span>
+                    </div>
+                    <div class="playback-controls">
+                        <button class="playback-btn" id="btn-rewind" title="倒帶">⏪</button>
+                        <button class="playback-btn" id="btn-play" title="播放">▶</button>
+                        <button class="playback-btn" id="btn-pause" title="暫停" style="display:none;">⏸</button>
+                        <button class="playback-btn" id="btn-stop" title="停止">⏹</button>
+                    </div>
+                    <div class="speed-control">
+                        <label>速度:</label>
+                        <select id="sim-speed">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="2">2x</option>
+                            <option value="5">5x</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" id="btn-save">儲存</button>
+                <button class="btn btn-secondary" id="btn-back-home">返回首頁</button>
+            </div>
+        </div>
+
+        <!-- Editor Main Content -->
+        <div id="editor-main">
+            <!-- Left Panel - Object Palette -->
+            <div id="left-panel" class="panel">
+                <div class="panel-toggle" data-panel="left">◀</div>
+                <div class="panel-content">
+                    <h3>物件選單</h3>
+                    <div class="object-palette">
+                        <div class="object-category">
+                            <h4>儲存設備</h4>
+                            <div class="object-item" data-type="shelf" draggable="true">
+                                <div class="object-icon shelf-icon"></div>
+                                <span>貨架</span>
+                            </div>
+                            <div class="object-item" data-type="pallet" draggable="true">
+                                <div class="object-icon pallet-icon"></div>
+                                <span>棧板區</span>
+                            </div>
+                        </div>
+                        <div class="object-category">
+                            <h4>作業區域</h4>
+                            <div class="object-item" data-type="shipping" draggable="true">
+                                <div class="object-icon shipping-icon"></div>
+                                <span>人工出貨區</span>
+                            </div>
+                            <div class="object-item" data-type="agvStation" draggable="true">
+                                <div class="object-icon station-icon"></div>
+                                <span>AGV出貨站</span>
+                            </div>
+                        </div>
+                        <div class="object-category">
+                            <h4>設備與標記</h4>
+                            <div class="object-item" data-type="equipment" draggable="true">
+                                <div class="object-icon equipment-icon"></div>
+                                <span>設備</span>
+                            </div>
+                            <div class="object-item" data-type="restricted" draggable="true">
+                                <div class="object-icon restricted-icon"></div>
+                                <span>禁止移動區</span>
+                            </div>
+                        </div>
+                        <div class="object-category">
+                            <h4>AGV系統</h4>
+                            <div class="object-item" data-type="agvPath" draggable="true">
+                                <div class="object-icon path-icon"></div>
+                                <span>AGV路線</span>
+                            </div>
+                            <div class="object-item" data-type="agv" draggable="true">
+                                <div class="object-icon agv-icon"></div>
+                                <span>AGV</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3D Viewport -->
+            <div id="viewport">
+                <canvas id="three-canvas"></canvas>
+                <div id="viewport-overlay">
+                    <div class="coords-display">
+                        <span>X: <span id="coord-x">0</span></span>
+                        <span>Y: <span id="coord-y">0</span></span>
+                        <span>Z: <span id="coord-z">0</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Properties -->
+            <div id="right-panel" class="panel">
+                <div class="panel-toggle" data-panel="right">▶</div>
+                <div class="panel-content">
+                    <div id="no-selection" class="panel-placeholder">
+                        <p>請選擇物件以編輯屬性</p>
+                    </div>
+                    <div id="property-editor" style="display:none;">
+                        <h3>物件屬性</h3>
+                        <div class="property-section">
+                            <h4>基本資訊</h4>
+                            <div class="form-group">
+                                <label>類型</label>
+                                <input type="text" id="prop-type" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>名稱</label>
+                                <input type="text" id="prop-name">
+                            </div>
+                        </div>
+                        <div class="property-section">
+                            <h4>位置</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>X (m)</label>
+                                    <input type="number" id="prop-x" step="0.6">
+                                </div>
+                                <div class="form-group">
+                                    <label>Z (m)</label>
+                                    <input type="number" id="prop-z" step="0.6">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>旋轉 (°)</label>
+                                <input type="number" id="prop-rotation" step="90" min="0" max="270">
+                            </div>
+                        </div>
+                        <div class="property-section shelf-props">
+                            <h4>貨架設定</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>寬 (格)</label>
+                                    <input type="number" id="prop-shelf-width" min="1" max="10" value="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>深 (格)</label>
+                                    <input type="number" id="prop-shelf-depth" min="1" max="10" value="4">
+                                </div>
+                                <div class="form-group">
+                                    <label>層數</label>
+                                    <input type="number" id="prop-shelf-levels" min="1" max="10" value="5">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="property-section equipment-props" style="display:none;">
+                            <h4>設備設定</h4>
+                            <div class="form-group">
+                                <label>形狀</label>
+                                <select id="prop-equip-shape">
+                                    <option value="box">立方體</option>
+                                    <option value="cylinder">圓柱體</option>
+                                </select>
+                            </div>
+                            <div class="form-row box-dims">
+                                <div class="form-group">
+                                    <label>長 (m)</label>
+                                    <input type="number" id="prop-equip-length" step="0.1" value="0.6">
+                                </div>
+                                <div class="form-group">
+                                    <label>寬 (m)</label>
+                                    <input type="number" id="prop-equip-width" step="0.1" value="0.6">
+                                </div>
+                            </div>
+                            <div class="form-row cylinder-dims" style="display:none;">
+                                <div class="form-group">
+                                    <label>直徑 (m)</label>
+                                    <input type="number" id="prop-equip-diameter" step="0.1" value="0.6">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>高度 (m)</label>
+                                <input type="number" id="prop-equip-height" step="0.1" value="2.1">
+                            </div>
+                        </div>
+                        <div class="property-section agv-props" style="display:none;">
+                            <h4>AGV參數</h4>
+                            <div class="form-group">
+                                <label>AGV ID</label>
+                                <input type="text" id="prop-agv-id" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>最大載重 (kg)</label>
+                                <input type="number" id="prop-agv-capacity" value="500">
+                            </div>
+                            <div class="form-group">
+                                <label>最大速度 (m/s)</label>
+                                <input type="number" id="prop-agv-speed" step="0.1" value="1.5">
+                            </div>
+                            <div class="form-group">
+                                <label>電池容量 (%)</label>
+                                <input type="number" id="prop-agv-battery" min="0" max="100" value="100">
+                            </div>
+                            <div class="form-group">
+                                <label>狀態</label>
+                                <select id="prop-agv-status">
+                                    <option value="idle">閒置</option>
+                                    <option value="working">工作中</option>
+                                    <option value="charging">充電中</option>
+                                    <option value="error">故障</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="property-section agv-simulation-props" style="display:none;">
+                            <h4>當前任務</h4>
+                            <div class="form-group">
+                                <label>載貨狀態</label>
+                                <span id="prop-agv-cargo">無</span>
+                            </div>
+                            <div class="form-group">
+                                <label>下個任務</label>
+                                <span id="prop-agv-task">無排定任務</span>
+                            </div>
+                            <div class="form-group">
+                                <label>目標位置</label>
+                                <span id="prop-agv-target">-</span>
+                            </div>
+                        </div>
+                        <div class="property-section">
+                            <h4>外觀</h4>
+                            <div class="form-group">
+                                <label>物件顏色</label>
+                                <input type="color" id="prop-color" value="#4a90d9">
+                            </div>
+                            <div class="form-group">
+                                <label>框線顏色</label>
+                                <input type="color" id="prop-outline-color" value="#2d5a87">
+                            </div>
+                        </div>
+                        <div class="property-actions">
+                            <button class="btn btn-danger" id="btn-delete-object">刪除物件</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equipment Creation Modal -->
+    <div id="equipment-modal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>新增設備</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>形狀</label>
+                    <select id="new-equip-shape">
+                        <option value="box">立方體</option>
+                        <option value="cylinder">圓柱體</option>
+                    </select>
+                </div>
+                <div class="form-row new-box-dims">
+                    <div class="form-group">
+                        <label>長 (m)</label>
+                        <input type="number" id="new-equip-length" step="0.1" value="0.6" min="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>寬 (m)</label>
+                        <input type="number" id="new-equip-width" step="0.1" value="0.6" min="0.1">
+                    </div>
+                </div>
+                <div class="form-row new-cylinder-dims" style="display:none;">
+                    <div class="form-group">
+                        <label>直徑 (m)</label>
+                        <input type="number" id="new-equip-diameter" step="0.1" value="0.6" min="0.1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>高度 (m)</label>
+                    <input type="number" id="new-equip-height" step="0.1" value="2.1" min="0.1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-cancel">取消</button>
+                <button class="btn btn-primary" id="btn-confirm-equipment">確認</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+    <script src="js/scene.js"></script>
+    <script src="js/objects.js"></script>
+    <script src="js/editor.js"></script>
+    <script src="js/simulation.js"></script>
+</body>
+</html>
