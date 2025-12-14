@@ -32,13 +32,24 @@ const Scene = {
     },
 
     init() {
+        const canvas = document.getElementById('three-canvas');
+        const container = document.getElementById('viewport');
+
+        // If already initialized, just resize and return
         if (this.isInitialized) {
-            this.onWindowResize();
+            // Force resize after a small delay to ensure DOM is ready
+            setTimeout(() => {
+                this.onWindowResize();
+            }, 50);
             return;
         }
 
-        const canvas = document.getElementById('three-canvas');
-        const container = document.getElementById('viewport');
+        // Check if container has valid dimensions
+        if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+            console.warn('Viewport container not ready, retrying...');
+            setTimeout(() => this.init(), 100);
+            return;
+        }
 
         // Scene
         this.scene = new THREE.Scene();
@@ -457,9 +468,21 @@ const Scene = {
         const container = document.getElementById('viewport');
         if (!container || !this.camera || !this.renderer) return;
 
-        this.camera.aspect = container.clientWidth / container.clientHeight;
+        // Get actual dimensions
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        // Skip if dimensions are invalid
+        if (width === 0 || height === 0) {
+            console.warn('Viewport has zero dimensions, skipping resize');
+            return;
+        }
+
+        this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize(container.clientWidth, container.clientHeight);
+        this.renderer.setSize(width, height);
+
+        console.log('Scene resized to:', width, 'x', height);
     },
 
     onCanvasClick(event) {

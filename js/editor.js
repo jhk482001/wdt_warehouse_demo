@@ -12,6 +12,7 @@ const Editor = {
     tempPathLine: null,
     agvCount: 0,
     maxAGVs: 30,
+    isInitialized: false,
 
     // Undo/Redo system
     history: [],
@@ -19,8 +20,18 @@ const Editor = {
     maxHistorySteps: 10,
 
     init() {
-        this.bindEvents();
+        // Prevent duplicate event binding
+        if (!this.isInitialized) {
+            this.bindEvents();
+            this.isInitialized = true;
+        }
         this.countExistingAGVs();
+        // Reset state
+        this.selectedObject = null;
+        this.selectedObjectType = null;
+        this.history = [];
+        this.historyIndex = -1;
+        this.updateHistoryButtons();
     },
 
     bindEvents() {

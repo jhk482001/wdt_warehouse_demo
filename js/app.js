@@ -165,15 +165,20 @@ const App = {
 
         if (page === 'editor' && this.currentLayout) {
             // Initialize editor with current layout
+            // Use longer delay to ensure DOM is fully rendered
             setTimeout(() => {
                 if (window.Scene) {
                     Scene.init();
-                    Scene.loadLayout(this.currentLayout);
+                    // Load layout after scene is ready
+                    setTimeout(() => {
+                        Scene.loadLayout(this.currentLayout);
+                        Scene.onWindowResize();
+                    }, 100);
                 }
                 if (window.Editor) {
                     Editor.init();
                 }
-            }, 100);
+            }, 200);
         }
     },
 
